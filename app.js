@@ -6,7 +6,7 @@ function $(id) {
 }
 
 /* =====================================================
-   GLOBALS (INVENTORY PERFORMANCE)
+   GLOBALS
 ===================================================== */
 let allInventoryItems = [];
 let filteredInventory = [];
@@ -37,20 +37,18 @@ if ($("itemForm")) {
 
     addItem(item, () => {
       $("itemForm").reset();
-      alert("Item saved successfully");
       updateDashboardFromDB();
+      loadInventory();
+      alert("Item saved");
     });
   });
 }
 
 /* =====================================================
-   BARCODE SEARCH (AUTO-FILL)
+   BARCODE SEARCH
 ===================================================== */
 function searchByBarcode() {
-  const input = $("searchBarcode") || $("barcode");
-  if (!input) return;
-
-  const barcode = input.value.trim();
+  const barcode = $("searchBarcode")?.value || $("barcode")?.value;
   if (!barcode) return;
 
   getItem(barcode, item => {
@@ -59,8 +57,8 @@ function searchByBarcode() {
       return;
     }
 
-    $("name").value = item.name || "";
-    $("barcode").value = item.barcode || barcode;
+    $("name").value = item.name;
+    $("barcode").value = item.barcode;
     $("description").value = item.description || "";
   });
 }
@@ -72,7 +70,7 @@ function loadInventory() {
   if (!$("inventoryBody")) return;
 
   getAllItems(items => {
-    allInventoryItems = items.filter(i => i.expiry && i.quantity > 0);
+    allInventoryItems = items.filter(i => i.quantity > 0);
     applyInventoryFilter();
   });
 }
@@ -104,24 +102,17 @@ function startEdit(barcode) {
 }
 
 function saveEdit(barcode) {
-  const expiryInput = document.querySelector(`input[data-expiry="${barcode}"]`);
-  const qtyInput = document.querySelector(`input[data-qty="${barcode}"]`);
+  const expiry = document.querySelector(`input[data-expiry="${barcode}"]`)?.value;
+  const qty = Number(document.querySelector(`input[data-qty="${barcode}"]`)?.value);
 
-  if (!expiryInput || !qtyInput) return;
-
-  const newExpiry = expiryInput.value;
-  const newQty = Number(qtyInput.value);
-
-  if (!newExpiry || newQty <= 0) {
+  if (!expiry || qty <= 0) {
     alert("Invalid values");
     return;
   }
 
   getItem(barcode, item => {
-    if (!item) return;
-
-    item.expiry = newExpiry;
-    item.quantity = newQty;
+    item.expiry = expiry;
+    item.quantity = qty;
 
     addItem(item, () => {
       editingBarcode = null;
@@ -132,7 +123,7 @@ function saveEdit(barcode) {
 }
 
 /* =====================================================
-   VIRTUAL SCROLL RENDER
+   VIRTUAL SCROLL
 ===================================================== */
 function renderVirtualRows(scrollTop) {
   const tbody = $("inventoryBody");
@@ -147,57 +138,39 @@ function renderVirtualRows(scrollTop) {
   tbody.style.height = filteredInventory.length * rowHeight + "px";
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setHours(0,0,0,0);
 
   for (let i = start; i < end; i++) {
     const item = filteredInventory[i];
-    const tr = document.createElement("tr");
+    const expired = new Date(item.expiry) < today;
+    const editing = editingBarcode === item.barcode;
 
-    if (new Date(item.expiry) < today) {
-      tr.className = "expired-row";
-    }
-
-    const isEditing = editingBarcode === item.barcode;
-
-    tr.innerHTML = `
-      <td>${item.name}</td>
-      <td>${item.barcode}</td>
-      <td>${item.description || ""}</td>
-
-      <td>
-        ${
-          isEditing
-            ? `<input type="date" value="${item.expiry}" data-expiry="${item.barcode}">`
-            : item.expiry
-        }
-      </td>
-
-      <td>
-        ${
-          isEditing
-            ? `<input type="number" min="1" value="${item.quantity}" data-qty="${item.barcode}">`
-            : item.quantity
-        }
-      </td>
-
-      <td>
-        ${
-          isEditing
-            ? `<button title="Save" onclick="saveEdit('${item.barcode}')">💾</button>`
-            : `
-              <button title="Edit" onclick="startEdit('${item.barcode}')">✏️</button>
-              <button title="Delete" onclick="deleteItem('${item.barcode}')">🗑️</button>
-            `
-        }
-      </td>
+    tbody.innerHTML += `
+      <tr class="${expired ? "expired-row" : ""}">
+        <td>${item.name}</td>
+        <td>${item.barcode}</td>
+        <td>${item.description || ""}</td>
+        <td>
+          ${editing ? `<input type="date" value="${item.expiry}" data-expiry="${item.barcode}">` : item.expiry}
+        </td>
+        <td>
+          ${editing ? `<input type="number" min="1" value="${item.quantity}" data-qty="${item.barcode}">` : item.quantity}
+        </td>
+        <td>
+          ${
+            editing
+              ? `<button title="Save" onclick="saveEdit('${item.barcode}')">💾</button>`
+              : `<button title="Edit" onclick="startEdit('${item.barcode}')">✏️</button>
+                 <button title="Delete" onclick="deleteItem('${item.barcode}')">🗑️</button>`
+          }
+        </td>
+      </tr>
     `;
-
-    tbody.appendChild(tr);
   }
 }
 
 /* =====================================================
-   DELETE ITEM
+   DELETE
 ===================================================== */
 function deleteItem(barcode) {
   if (!confirm("Delete this item?")) return;
@@ -208,12 +181,71 @@ function deleteItem(barcode) {
 }
 
 /* =====================================================
-   DASHBOARD (FIXED & WORKING)
+   IMPORT PRODUCTS
+===================================================== */
+function importData() {
+  const file = $("importFile")?.files[0];
+  if (!file) return alert("Select an Excel file");
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: "binary" });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+    rows.forEach(r => {
+      if (!r.Barcode || !r["item name"]) return;
+      addItem({
+        name: r["item name"],
+        barcode: String(r.Barcode),
+        description: r.Description || "",
+        expiry: "",
+        quantity: 0
+      });
+    });
+
+    alert("Products imported");
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* =====================================================
+   EXPORT INVENTORY
+===================================================== */
+function exportToExcel() {
+  getAllItems(items => {
+    const exportItems = items.filter(i => i.quantity > 0);
+    if (!exportItems.length) return alert("No data");
+
+    exportItems.sort((a,b) => new Date(a.expiry || "2100") - new Date(b.expiry || "2100"));
+
+    let total = 0;
+    const data = exportItems.map(i => {
+      total += i.quantity;
+      return {
+        Name: i.name,
+        Barcode: i.barcode,
+        Description: i.description || "",
+        Expiry: i.expiry || "",
+        Quantity: i.quantity
+      };
+    });
+
+    data.push({ Name: "TOTAL", Quantity: total });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+    XLSX.writeFile(wb, "inventory_export.xlsx");
+  });
+}
+
+/* =====================================================
+   DASHBOARD
 ===================================================== */
 function updateDashboardFromDB() {
   getAllItems(items => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0,0,0,0);
 
     const fiveMonthsLater = new Date(today);
     fiveMonthsLater.setMonth(today.getMonth() + 5);
@@ -223,51 +255,28 @@ function updateDashboardFromDB() {
 
     items.forEach(i => {
       if (!i.expiry || i.quantity <= 0) return;
-
       const exp = new Date(i.expiry);
-
-      if (exp < today) {
-        expired++;
-      } else if (exp >= today && exp <= fiveMonthsLater) {
-        toReturn++;
-      }
+      if (exp < today) expired++;
+      else if (exp <= fiveMonthsLater) toReturn++;
     });
 
-    if ($("expiredCount")) $("expiredCount").textContent = expired;
-    if ($("returnCount")) $("returnCount").textContent = toReturn;
+    $("expiredCount") && ($("expiredCount").textContent = expired);
+    $("returnCount") && ($("returnCount").textContent = toReturn);
   });
 }
 
 /* =====================================================
-   ACTIVE TAB
-===================================================== */
-function highlightActiveTab() {
-  const page = location.pathname.split("/").pop();
-  document.querySelectorAll(".bottom-tab a").forEach(t =>
-    t.classList.remove("active")
-  );
-
-  if (page === "index.html") document.querySelector('[data-tab="inventory"]')?.classList.add("active");
-  if (page === "add.html") document.querySelector('[data-tab="add"]')?.classList.add("active");
-  if (page === "dashboard.html") document.querySelector('[data-tab="dashboard"]')?.classList.add("active");
-}
-
-/* =====================================================
-   BOOTSTRAP (DB READY SAFE)
+   BOOTSTRAP
 ===================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  const scrollBox = $("inventoryScroll");
-  if (scrollBox) {
-    scrollBox.addEventListener("scroll", () => {
-      renderVirtualRows(scrollBox.scrollTop);
-    });
-  }
+  $("inventoryScroll")?.addEventListener("scroll", e =>
+    renderVirtualRows(e.target.scrollTop)
+  );
 
   if (typeof onDBReady === "function") {
     onDBReady(() => {
-      if ($("inventoryBody")) loadInventory();
-      if ($("expiredCount") || $("returnCount")) updateDashboardFromDB();
-      highlightActiveTab();
+      loadInventory();
+      updateDashboardFromDB();
     });
   }
 });

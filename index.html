@@ -1,110 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
   <title>Inventory</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
-
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
 </head>
 <body>
 
 <div class="page">
   <h2>Inventory</h2>
 
-  <!-- SEARCH -->
-  <input
-    id="inventorySearch"
-    placeholder="Search by name or barcode"
-    oninput="filterInventory()"
-  />
+  <input id="inventorySearch" placeholder="Search" oninput="filterInventory()">
 
-  <!-- INVENTORY TABLE WITH VIRTUAL SCROLL -->
   <div id="inventoryWrapper">
-    <table class="inventory-table">
-      <thead>
-        <tr>
-          <th>Item Name</th>
-          <th>Barcode</th>
-          <th>Description</th>
-          <th>Expiry</th>
-          <th>Qty</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-    </table>
-
     <div id="inventoryScroll">
       <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Barcode</th><th>Description</th>
+            <th>Expiry</th><th>Qty</th><th>Action</th>
+          </tr>
+        </thead>
         <tbody id="inventoryBody"></tbody>
       </table>
     </div>
   </div>
 </div>
 
-<!-- BOTTOM TAB BAR -->
- <footer class="app-footer">
-  Made by <strong>IloveRhaine</strong>
-</footer>
-
 <nav class="bottom-tab">
-  <a href="index.html" data-tab="inventory">📦<span>Inventory</span></a>
-  <a href="add.html" data-tab="add">➕<span>Add</span></a>
-  <a href="dashboard.html" data-tab="dashboard">📊<span>Dashboard</span></a>
+  <a href="index.html">📦 Inventory</a>
+  <a href="add.html">➕ Add</a>
+  <a href="dashboard.html">📊 Dashboard</a>
 </nav>
 
-<!-- iOS PWA INSTALL BANNER -->
-<div id="ios-install-banner">
-  <span>📱 Install this app</span>
-  <span class="hint">
-    Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
-  </span>
-  <button onclick="dismissIOSInstall()">✕</button>
-</div>
-
-<!-- SCRIPTS -->
 <script src="db.js"></script>
 <script src="app.js"></script>
 
-<script>
-  /* ================================
-     iOS PWA INSTALL PROMPT LOGIC
-  ================================ */
-  function isIOS() {
-    return /iphone|ipad|ipod/i.test(navigator.userAgent);
-  }
-
-  function isInStandaloneMode() {
-    return window.navigator.standalone === true;
-  }
-
-  function dismissIOSInstall() {
-    document.getElementById("ios-install-banner").style.display = "none";
-    localStorage.setItem("iosInstallDismissed", "1");
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    // Show iOS install banner if applicable
-    if (
-      isIOS() &&
-      !isInStandaloneMode() &&
-      !localStorage.getItem("iosInstallDismissed")
-    ) {
-      document.getElementById("ios-install-banner").style.display = "flex";
-    }
-
-    // Load inventory only after DB is ready
-    if (typeof onDBReady === "function") {
-      onDBReady(() => {
-        loadInventory();
-        highlightActiveTab();
-      });
-    }
-  });
-</script>
-
 </body>
 </html>
+  

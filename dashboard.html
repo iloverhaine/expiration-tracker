@@ -11,53 +11,45 @@
 <div class="page">
   <h2>Dashboard</h2>
 
-  <!-- SUMMARY -->
-  <p>❌ Expired: <strong id="expiredCount">0</strong></p>
-  <p>📦 To Be Returned (≥ 5 months): <strong id="returnCount">0</strong></p>
+  <!-- SUMMARY CARDS -->
+  <div class="dashboard-card">
+    <h3>❌ Expired</h3>
+    <p id="expiredCount">0</p>
+  </div>
 
-  <hr>
+  <div class="dashboard-card">
+    <h3>📦 To Be Returned (≤ 5 months)</h3>
+    <p id="returnCount">0</p>
+  </div>
 
-  <!-- IMPORT / EXPORT SECTION -->
-  <h3>Import / Export</h3>
-
-  <label><strong>Import Products (Excel)</strong></label>
-  <input type="file" id="importFile" accept=".xlsx">
-  <button onclick="importData()">Import Products</button>
-
-  <br><br>
-
-  <label><strong>Export Inventory</strong></label>
-  <button onclick="exportToExcel()">Export Inventory</button>
+  <!-- ACTIONS -->
+  <div class="dashboard-actions">
+    <button onclick="exportToExcel()">⬇️ Export Inventory</button>
+    <a href="import.html" class="btn-secondary">⬆️ Import Products</a>
+  </div>
 </div>
 
 <!-- BOTTOM TAB BAR -->
 <nav class="bottom-tab">
-  <a href="index.html" data-tab="inventory">
-    📦
-    <span>Inventory</span>
-    <i class="badge" id="badge-inventory"></i>
-  </a>
-
-  <a href="add.html" data-tab="add">
-    ➕
-    <span>Add</span>
-  </a>
-
-  <a href="dashboard.html" data-tab="dashboard">
-    📊
-    <span>Dashboard</span>
-    <i class="badge" id="badge-dashboard"></i>
-  </a>
+  <a href="index.html" data-tab="inventory">📦<span>Inventory</span></a>
+  <a href="add.html" data-tab="add">➕<span>Add</span></a>
+  <a href="dashboard.html" data-tab="dashboard">📊<span>Dashboard</span></a>
 </nav>
 
 <!-- SCRIPTS -->
 <script src="xlsx.full.min.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
+
 <script>
-  updateDashboardFromDB();
-  highlightActiveTab();
-  updateTabBadges();
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof onDBReady === "function") {
+      onDBReady(() => {
+        updateDashboardFromDB();
+        highlightActiveTab();
+      });
+    }
+  });
 </script>
 
 </body>

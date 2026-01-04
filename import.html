@@ -1,39 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Import / Export</title>
+  <title>Import Products</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="page">
-  <h2>Import / Export</h2>
+  <h2>Import Products</h2>
 
-  <h3>Import Products (Excel)</h3>
-  <input type="file" id="importFile" accept=".xlsx">
-  <button onclick="importData()">Import</button>
+  <input type="file" id="importFile" accept=".xlsx,.xls">
+  <button onclick="importData()">Import Products</button>
 
-  <hr>
-
-  <h3>Export Inventory</h3>
-  <button onclick="exportToExcel()">Export to Excel</button>
+  <p>Excel columns required:</p>
+  <ul>
+    <li><strong>Barcode</strong></li>
+    <li><strong>item name</strong></li>
+    <li>Description (optional)</li>
+  </ul>
 </div>
 
 <nav class="bottom-tab">
-  <a href="index.html" data-tab="inventory">📦<span>Inventory</span><i class="badge" id="badge-inventory"></i></a>
-  <a href="add.html" data-tab="add">➕<span>Add</span></a>
-  <a href="dashboard.html" data-tab="dashboard">📊<span>Dashboard</span><i class="badge" id="badge-dashboard"></i></a>
+  <a href="index.html">📦 Inventory</a>
+  <a href="add.html">➕ Add</a>
+  <a href="dashboard.html">📊 Dashboard</a>
 </nav>
 
 <script src="xlsx.full.min.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
-<script>
-  highlightActiveTab();
-  updateTabBadges();
-</script>
 
 </body>
 </html>
