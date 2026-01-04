@@ -1,159 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Expiration Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2563eb">
-
   <link rel="stylesheet" href="style.css">
 
-  <style>
-    label {
-      font-weight: bold;
-    }
-    .required {
-      color: red;
-    }
-    .form-group {
-      margin-bottom: 12px;
-    }
-  </style>
-</head>
+  <!-- Excel Export -->
+  <script src="xlsx.full.min.js"></script>
 
+  <!-- Barcode Scanner -->
+  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
+</head>
 <body>
 
-<h2>Expiration Tracker</h2>
+<header class="top-header">
+  <h1>Expiration Tracker</h1>
+  <p>Scan · Track · Manage Inventory</p>
+</header>
 
-<!-- ============================= -->
-<!-- SCAN BARCODE (TOP) -->
-<!-- ============================= -->
-<h3>Scan Barcode</h3>
+<main class="container">
 
-<button type="button" onclick="startScanner()">Scan Barcode</button>
-<br><br>
+  <!-- DASHBOARD -->
+  <section class="dashboard">
+    <div class="stat expired">Expired<br><span id="expiredCount">0</span></div>
+    <div class="stat soon">Expiring Soon<br><span id="soonCount">0</span></div>
+    <div class="stat return">To Be Returned<br><span id="returnCount">0</span></div>
+  </section>
 
-<div id="scanner" style="width:300px; height:200px; display:none;"></div>
+  <!-- SCAN -->
+  <section class="card">
+    <button class="btn scan" onclick="startScanner()">📷 Scan Barcode</button>
+    <div id="scanner"></div>
+  </section>
 
-<hr>
+  <!-- SEARCH -->
+  <section class="card">
+    <label>Search by Barcode</label>
+    <div class="row">
+      <input id="searchBarcode" inputmode="numeric" maxlength="12" placeholder="Enter 12-digit barcode">
+      <button class="btn primary" onclick="searchByBarcode()">Search</button>
+    </div>
+  </section>
 
-<!-- ============================= -->
-<!-- SEARCH ITEM (BARCODE ONLY) -->
-<!-- ============================= -->
-<h3>Search Item (Barcode Only)</h3>
+  <!-- ADD / UPDATE -->
+  <section class="card">
+    <h2>Add / Update Item</h2>
 
-<input id="search" placeholder="Enter barcode">
-<button type="button" onclick="searchByBarcode()">Search</button>
+    <label>Item Name *</label>
+    <input id="name" required>
 
-<hr>
+    <label>Barcode *</label>
+    <input id="barcode" inputmode="numeric" maxlength="12" required>
 
-<!-- ============================= -->
-<!-- ADD / UPDATE ITEM FORM -->
-<!-- ============================= -->
-<h3>Add / Update Item</h3>
+    <label>Description</label>
+    <input id="description">
 
-<form id="itemForm">
+    <div class="row">
+      <div>
+        <label>Expiration Date *</label>
+        <input id="expiry" type="date" required>
+      </div>
+      <div>
+        <label>Quantity *</label>
+        <input id="quantity" type="number" min="1" required>
+      </div>
+    </div>
 
-  <div class="form-group">
-    <label for="name">Item Name <span class="required">*</span></label><br>
-    <input id="name" placeholder="Item Name" required>
-  </div>
+    <button class="btn primary full" onclick="saveItem()">💾 Save Item</button>
+  </section>
 
-  <div class="form-group">
-    <label for="barcode">Barcode <span class="required">*</span></label><br>
-    <input id="barcode" placeholder="Barcode" required>
-  </div>
+  <!-- INVENTORY -->
+  <section class="card">
+    <div class="row space">
+      <h2>Inventory</h2>
+      <button class="btn primary" onclick="exportExcel()">⬇ Export Excel</button>
+    </div>
 
-  <div class="form-group">
-    <label for="description">Description</label><br>
-    <input id="description" placeholder="Description">
-  </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Barcode</th>
+          <th>Expiry</th>
+          <th>Qty</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTable"></tbody>
+    </table>
+  </section>
 
-  <div class="form-group">
-    <label for="expiry">Expiration Date <span class="required">*</span></label><br>
-    <input id="expiry" type="date" required>
-  </div>
+</main>
 
-  <div class="form-group">
-    <label for="quantity">Quantity <span class="required">*</span></label><br>
-    <input
-      id="quantity"
-      type="number"
-      placeholder="Quantity"
-      required
-      min="1"
-      oninput="this.value = this.value.replace(/[^0-9]/g,'')"
-    >
-  </div>
-
-  <button type="submit">Save Item</button>
-
-</form>
-
-<hr>
-
-<!-- ============================= -->
-<!-- IMPORT -->
-<!-- ============================= -->
-<h3>Import Products (Excel)</h3>
-
-<input type="file" id="importFile" accept=".xlsx">
-<button type="button" onclick="importData()">Import</button>
-
-<hr>
-
-<!-- ============================= -->
-<!-- EXPORT -->
-<!-- ============================= -->
-<button type="button" onclick="exportToExcel()">Export to Excel</button>
-
-<hr>
-
-<!-- ============================= -->
-<!-- DASHBOARD -->
-<!-- ============================= -->
-<h3>Dashboard</h3>
-
-<div id="dashboard">
-  <p>❌ Expired: <strong id="expiredCount">0</strong></p>
-  <p>📦 To Be Returned (≥ 5 months): <strong id="returnCount">0</strong></p>
-</div>
-
-<hr>
-
-<!-- ============================= -->
-<!-- INVENTORY TABLE -->
-<!-- ============================= -->
-<h3>Inventory</h3>
-
-<table border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Barcode</th>
-      <th>Description</th>
-      <th>Expiry Date</th>
-      <th>Quantity</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody id="inventoryBody"></tbody>
-</table>
-
-<!-- ============================= -->
-<!-- SCRIPTS -->
-<!-- ============================= -->
-<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
-<script src="xlsx.full.min.js"></script>
 <script src="db.js"></script>
 <script src="app.js"></script>
 
 <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
-}
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
+  }
 </script>
 
 </body>
