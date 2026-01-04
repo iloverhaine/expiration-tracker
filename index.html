@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Expiration Tracker</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    label {
+      font-weight: bold;
+    }
+    .required {
+      color: red;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Expiration Tracker</h2>
+
+<!-- ============================= -->
+<!-- SCAN BARCODE (TOP) -->
+<!-- ============================= -->
+<h3>Scan Barcode</h3>
+
+<button type="button" onclick="startScanner()">Scan Barcode</button>
+<br><br>
+
+<div id="scanner" style="width:300px; height:200px; display:none;"></div>
+
+<hr>
+
+<!-- ============================= -->
+<!-- SEARCH ITEM (BARCODE ONLY) -->
+<!-- ============================= -->
+<h3>Search Item (Barcode Only)</h3>
+
+<input id="search" placeholder="Enter barcode">
+<button type="button" onclick="searchByBarcode()">Search</button>
+
+<hr>
+
+<!-- ============================= -->
+<!-- ADD / UPDATE ITEM FORM -->
+<!-- ============================= -->
+<h3>Add / Update Item</h3>
+
+<form id="itemForm">
+
+  <div class="form-group">
+    <label for="name">Item Name <span class="required">*</span></label><br>
+    <input id="name" placeholder="Item Name" required>
+  </div>
+
+  <div class="form-group">
+    <label for="barcode">Barcode <span class="required">*</span></label><br>
+    <input id="barcode" placeholder="Barcode" required>
+  </div>
+
+  <div class="form-group">
+    <label for="description">Description</label><br>
+    <input id="description" placeholder="Description">
+  </div>
+
+  <div class="form-group">
+    <label for="expiry">Expiration Date <span class="required">*</span></label><br>
+    <input id="expiry" type="date" required>
+  </div>
+
+  <div class="form-group">
+    <label for="quantity">Quantity <span class="required">*</span></label><br>
+    <input
+      id="quantity"
+      type="number"
+      placeholder="Quantity"
+      required
+      min="1"
+      oninput="this.value = this.value.replace(/[^0-9]/g,'')"
+    >
+  </div>
+
+  <button type="submit">Save Item</button>
+
+</form>
+
+<hr>
+
+<!-- ============================= -->
+<!-- IMPORT -->
+<!-- ============================= -->
+<h3>Import Products (Excel)</h3>
+
+<input type="file" id="importFile" accept=".xlsx">
+<button type="button" onclick="importData()">Import</button>
+
+<hr>
+
+<!-- ============================= -->
+<!-- EXPORT -->
+<!-- ============================= -->
+<button type="button" onclick="exportToExcel()">Export to Excel</button>
+
+<hr>
+
+<!-- ============================= -->
+<!-- DASHBOARD -->
+<!-- ============================= -->
+<h3>Dashboard</h3>
+
+<div id="dashboard">
+  <p>❌ Expired: <strong id="expiredCount">0</strong></p>
+  <p>📦 To Be Returned (≥ 5 months): <strong id="returnCount">0</strong></p>
+</div>
+
+<hr>
+
+<!-- ============================= -->
+<!-- INVENTORY TABLE -->
+<!-- ============================= -->
+<h3>Inventory</h3>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Barcode</th>
+      <th>Description</th>
+      <th>Expiry Date</th>
+      <th>Quantity</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="inventoryBody"></tbody>
+</table>
+
+<!-- ============================= -->
+<!-- SCRIPTS -->
+<!-- ============================= -->
+<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
+<script src="xlsx.full.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
