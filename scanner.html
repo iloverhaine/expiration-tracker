@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+  <h2>Scan Barcode</h2>
+
+  <div id="scanner" style="width:100%; max-width:360px; margin:auto;"></div>
+
+  <p id="scanResult"></p>
+
+  <button onclick="startScanner()">Start Scan</button>
+</div>
+
+<nav class="bottom-tab">
+  <a href="index.html" data-tab="inventory">📦<span>Inventory</span><i class="badge" id="badge-inventory"></i></a>
+  <a href="add.html" data-tab="add">➕<span>Add</span></a>
+  <a href="scanner.html" data-tab="scan">📷<span>Scan</span></a>
+  <a href="dashboard.html" data-tab="dashboard">📊<span>Dashboard</span><i class="badge" id="badge-dashboard"></i></a>
+</nav>
+
+<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+  highlightActiveTab();
+  updateTabBadges();
+</script>
+
+</body>
+</html>

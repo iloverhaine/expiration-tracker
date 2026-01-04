@@ -1,76 +1,89 @@
-let db = null;
+let db;
+const DB_NAME = "ExpirationTrackerDB";
+const STORE_NAME = "items";
 
-const request = indexedDB.open("ExpirationTrackerDB", 1);
+/* =====================================================
+   DB READY HANDLING (CRITICAL FIX)
+===================================================== */
+let dbReadyCallbacks = [];
 
-request.onupgradeneeded = event => {
-  db = event.target.result;
+function onDBReady(callback) {
+  if (db) {
+    callback();
+  } else {
+    dbReadyCallbacks.push(callback);
+  }
+}
 
-  if (!db.objectStoreNames.contains("items")) {
-    const store = db.createObjectStore("items", {
-      keyPath: "barcode"
-    });
-    store.createIndex("name", "name", { unique: false });
+/* =====================================================
+   OPEN DATABASE
+===================================================== */
+const request = indexedDB.open(DB_NAME, 1);
+
+request.onupgradeneeded = e => {
+  db = e.target.result;
+
+  if (!db.objectStoreNames.contains(STORE_NAME)) {
+    db.createObjectStore(STORE_NAME, { keyPath: "barcode" });
   }
 };
 
-request.onsuccess = event => {
-  db = event.target.result;
-  console.log("IndexedDB ready");
+request.onsuccess = e => {
+  db = e.target.result;
+
+  // Notify all waiting callbacks
+  dbReadyCallbacks.forEach(cb => cb());
+  dbReadyCallbacks = [];
 };
 
-request.onerror = event => {
-  console.error("IndexedDB error:", event.target.error);
+request.onerror = () => {
+  alert("Failed to open database");
 };
 
-// ADD / UPDATE ITEM
-function addItem(item, onDone) {
-  const tx = db.transaction("items", "readwrite");
-  const store = tx.objectStore("items");
-
-  item.barcode = String(item.barcode);
-  store.put(item);
-
-  tx.oncomplete = () => {
-    if (onDone) onDone();
-  };
+/* =====================================================
+   ADD / UPDATE ITEM
+===================================================== */
+function addItem(item, callback) {
+  onDBReady(() => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.put(item);
+    tx.oncomplete = () => callback && callback();
+  });
 }
 
-// GET ITEM
-function getItem(value, callback) {
-  const tx = db.transaction("items", "readonly");
-  const store = tx.objectStore("items");
-
-  const req = store.get(String(value));
-  req.onsuccess = () => {
-    if (req.result) {
-      callback(req.result);
-    } else {
-      store.index("name").get(value).onsuccess = e =>
-        callback(e.target.result || null);
-    }
-  };
+/* =====================================================
+   GET ONE ITEM
+===================================================== */
+function getItem(barcode, callback) {
+  onDBReady(() => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(barcode);
+    req.onsuccess = () => callback(req.result);
+  });
 }
 
-// GET ALL ITEMS
+/* =====================================================
+   GET ALL ITEMS
+===================================================== */
 function getAllItems(callback) {
-  const tx = db.transaction("items", "readonly");
-  const store = tx.objectStore("items");
-  const items = [];
-
-  store.openCursor().onsuccess = e => {
-    const cursor = e.target.result;
-    if (cursor) {
-      items.push(cursor.value);
-      cursor.continue();
-    } else {
-      callback(items);
-    }
-  };
+  onDBReady(() => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = () => callback(req.result || []);
+  });
 }
 
-// DELETE ITEM
-function deleteItemByBarcode(barcode, onDone) {
-  const tx = db.transaction("items", "readwrite");
-  tx.objectStore("items").delete(String(barcode));
-  tx.oncomplete = () => onDone && onDone();
+/* =====================================================
+   DELETE ITEM
+===================================================== */
+function deleteItemByBarcode(barcode, callback) {
+  onDBReady(() => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(barcode);
+    tx.oncomplete = () => callback && callback();
+  });
 }

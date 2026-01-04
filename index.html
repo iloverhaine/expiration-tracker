@@ -1,108 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Expiration Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <title>Inventory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 
-  <!-- Excel Export -->
-  <script src="xlsx.full.min.js"></script>
-
-  <!-- Barcode Scanner -->
-  <script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.js"></script>
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
 </head>
 <body>
 
-<header class="top-header">
-  <h1>Expiration Tracker</h1>
-  <p>Scan · Track · Manage Inventory</p>
-</header>
-
-<main class="container">
-
-  <!-- DASHBOARD -->
-  <section class="dashboard">
-    <div class="stat expired">Expired<br><span id="expiredCount">0</span></div>
-    <div class="stat soon">Expiring Soon<br><span id="soonCount">0</span></div>
-    <div class="stat return">To Be Returned<br><span id="returnCount">0</span></div>
-  </section>
-
-  <!-- SCAN -->
-  <section class="card">
-    <button class="btn scan" onclick="startScanner()">📷 Scan Barcode</button>
-    <div id="scanner"></div>
-  </section>
+<div class="page">
+  <h2>Inventory</h2>
 
   <!-- SEARCH -->
-  <section class="card">
-    <label>Search by Barcode</label>
-    <div class="row">
-      <input id="searchBarcode" inputmode="numeric" maxlength="12" placeholder="Enter 12-digit barcode">
-      <button class="btn primary" onclick="searchByBarcode()">Search</button>
-    </div>
-  </section>
+  <input
+    id="inventorySearch"
+    placeholder="Search by name or barcode"
+    oninput="filterInventory()"
+  />
 
-  <!-- ADD / UPDATE -->
-  <section class="card">
-    <h2>Add / Update Item</h2>
-
-    <label>Item Name *</label>
-    <input id="name" required>
-
-    <label>Barcode *</label>
-    <input id="barcode" inputmode="numeric" maxlength="12" required>
-
-    <label>Description</label>
-    <input id="description">
-
-    <div class="row">
-      <div>
-        <label>Expiration Date *</label>
-        <input id="expiry" type="date" required>
-      </div>
-      <div>
-        <label>Quantity *</label>
-        <input id="quantity" type="number" min="1" required>
-      </div>
-    </div>
-
-    <button class="btn primary full" onclick="saveItem()">💾 Save Item</button>
-  </section>
-
-  <!-- INVENTORY -->
-  <section class="card">
-    <div class="row space">
-      <h2>Inventory</h2>
-      <button class="btn primary" onclick="exportExcel()">⬇ Export Excel</button>
-    </div>
-
-    <table>
+  <!-- INVENTORY TABLE WITH VIRTUAL SCROLL -->
+  <div id="inventoryWrapper">
+    <table class="inventory-table">
       <thead>
         <tr>
-          <th>Name</th>
+          <th>Item Name</th>
           <th>Barcode</th>
+          <th>Description</th>
           <th>Expiry</th>
           <th>Qty</th>
-          <th>Status</th>
           <th>Action</th>
         </tr>
       </thead>
-      <tbody id="inventoryTable"></tbody>
     </table>
-  </section>
 
-</main>
+    <div id="inventoryScroll">
+      <table class="inventory-table">
+        <tbody id="inventoryBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
+<!-- BOTTOM TAB BAR -->
+ <footer class="app-footer">
+  Made by <strong>IloveRhaine</strong>
+</footer>
+
+<nav class="bottom-tab">
+  <a href="index.html" data-tab="inventory">📦<span>Inventory</span></a>
+  <a href="add.html" data-tab="add">➕<span>Add</span></a>
+  <a href="dashboard.html" data-tab="dashboard">📊<span>Dashboard</span></a>
+</nav>
+
+<!-- iOS PWA INSTALL BANNER -->
+<div id="ios-install-banner">
+  <span>📱 Install this app</span>
+  <span class="hint">
+    Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
+  </span>
+  <button onclick="dismissIOSInstall()">✕</button>
+</div>
+
+<!-- SCRIPTS -->
 <script src="db.js"></script>
 <script src="app.js"></script>
 
 <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js");
+  /* ================================
+     iOS PWA INSTALL PROMPT LOGIC
+  ================================ */
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
   }
+
+  function isInStandaloneMode() {
+    return window.navigator.standalone === true;
+  }
+
+  function dismissIOSInstall() {
+    document.getElementById("ios-install-banner").style.display = "none";
+    localStorage.setItem("iosInstallDismissed", "1");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Show iOS install banner if applicable
+    if (
+      isIOS() &&
+      !isInStandaloneMode() &&
+      !localStorage.getItem("iosInstallDismissed")
+    ) {
+      document.getElementById("ios-install-banner").style.display = "flex";
+    }
+
+    // Load inventory only after DB is ready
+    if (typeof onDBReady === "function") {
+      onDBReady(() => {
+        loadInventory();
+        highlightActiveTab();
+      });
+    }
+  });
 </script>
 
 </body>

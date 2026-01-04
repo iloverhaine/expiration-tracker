@@ -1,127 +1,273 @@
-const inventoryTable = document.getElementById("inventoryTable");
-const expiredCount = document.getElementById("expiredCount");
-const soonCount = document.getElementById("soonCount");
-const returnCount = document.getElementById("returnCount");
-const scannerDiv = document.getElementById("scanner");
+/* =====================================================
+   HELPERS
+===================================================== */
+function $(id) {
+  return document.getElementById(id);
+}
 
+/* =====================================================
+   GLOBALS (INVENTORY PERFORMANCE)
+===================================================== */
+let allInventoryItems = [];
+let filteredInventory = [];
 let editingBarcode = null;
 
-/* ---------- SOUND + VIBRATION ---------- */
-function beep() {
-  const audio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQgAAAAA");
-  audio.play();
-  if (navigator.vibrate) navigator.vibrate(200);
+const rowHeight = 44;
+const visibleRows = 30;
+
+/* =====================================================
+   ADD / UPDATE ITEM
+===================================================== */
+if ($("itemForm")) {
+  $("itemForm").addEventListener("submit", e => {
+    e.preventDefault();
+
+    const item = {
+      name: $("name").value.trim(),
+      barcode: $("barcode").value.trim(),
+      description: $("description").value.trim(),
+      expiry: $("expiry").value,
+      quantity: Number($("quantity").value)
+    };
+
+    if (!item.name || !item.barcode || !item.expiry || item.quantity <= 0) {
+      alert("Complete all required fields");
+      return;
+    }
+
+    addItem(item, () => {
+      $("itemForm").reset();
+      alert("Item saved successfully");
+      updateDashboardFromDB();
+    });
+  });
 }
 
-/* ---------- SAVE / UPDATE ---------- */
-function saveItem() {
-  const item = {
-    name: name.value,
-    barcode: barcode.value,
-    description: description.value,
-    expiry: expiry.value,
-    quantity: Number(quantity.value)
-  };
-
-  dbSave(item);
-  editingBarcode = null;
-  clearForm();
-  loadInventory();
-  beep();
-}
-
-/* ---------- CLEAR FORM ---------- */
-function clearForm() {
-  ["name","barcode","description","expiry","quantity"].forEach(id => document.getElementById(id).value = "");
-}
-
-/* ---------- SEARCH ---------- */
+/* =====================================================
+   BARCODE SEARCH (AUTO-FILL)
+===================================================== */
 function searchByBarcode() {
-  const item = dbFind(searchBarcode.value);
-  if (!item) return alert("Item not found");
+  const input = $("searchBarcode") || $("barcode");
+  if (!input) return;
 
-  fillForm(item);
+  const barcode = input.value.trim();
+  if (!barcode) return;
+
+  getItem(barcode, item => {
+    if (!item) {
+      $("barcode").value = barcode;
+      return;
+    }
+
+    $("name").value = item.name || "";
+    $("barcode").value = item.barcode || barcode;
+    $("description").value = item.description || "";
+  });
 }
 
-/* ---------- FILL FORM ---------- */
-function fillForm(item) {
-  name.value = item.name;
-  barcode.value = item.barcode;
-  description.value = item.description;
-  expiry.value = item.expiry;
-  quantity.value = item.quantity;
-  editingBarcode = item.barcode;
-}
-
-/* ---------- DELETE ---------- */
-function deleteItem(code) {
-  if (!confirm("Delete this item?")) return;
-  dbDelete(code);
-  loadInventory();
-}
-
-/* ---------- INVENTORY ---------- */
+/* =====================================================
+   INVENTORY LOAD
+===================================================== */
 function loadInventory() {
-  inventoryTable.innerHTML = "";
-  let expired=0, soon=0, ret=0;
+  if (!$("inventoryBody")) return;
 
-  dbAll().forEach(item => {
-    const months = (new Date(item.expiry) - new Date()) / (1000*60*60*24*30);
-
-    let status="OK", cls="ok";
-    if (months < 0) { status="Expired"; cls="expired"; expired++; }
-    else if (months <= 5) { status="Expiring Soon"; cls="soon"; soon++; }
-    else { status="To Be Returned"; cls="return"; ret++; }
-
-    inventoryTable.innerHTML += `
-      <tr onclick='fillForm(${JSON.stringify(item)})'>
-        <td>${item.name}</td>
-        <td>${item.barcode}</td>
-        <td>${item.expiry}</td>
-        <td>${item.quantity}</td>
-        <td class="${cls}">${status}</td>
-        <td><button onclick="event.stopPropagation();deleteItem('${item.barcode}')">🗑</button></td>
-      </tr>`;
-  });
-
-  expiredCount.textContent = expired;
-  soonCount.textContent = soon;
-  returnCount.textContent = ret;
-}
-
-/* ---------- EXCEL EXPORT ---------- */
-function exportExcel() {
-  const data = dbAll();
-  if (!data.length) return alert("No data to export");
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-
-  XLSX.writeFile(wb, "Expiration_Inventory.xlsx");
-}
-
-/* ---------- BARCODE SCANNER ---------- */
-function startScanner() {
-  scannerDiv.style.display = "block";
-
-  Quagga.init({
-    inputStream: {
-      type: "LiveStream",
-      target: scannerDiv,
-      constraints: { facingMode: "environment" }
-    },
-    decoder: { readers: ["ean_reader","ean_13_reader","upc_reader"] }
-  }, () => Quagga.start());
-
-  Quagga.onDetected(data => {
-    const code = data.codeResult.code.slice(0,12);
-    barcode.value = code;
-    searchBarcode.value = code;
-    Quagga.stop();
-    scannerDiv.style.display = "none";
-    beep();
+  getAllItems(items => {
+    allInventoryItems = items.filter(i => i.expiry && i.quantity > 0);
+    applyInventoryFilter();
   });
 }
 
-loadInventory();
+/* =====================================================
+   INVENTORY SEARCH
+===================================================== */
+function filterInventory() {
+  applyInventoryFilter();
+}
+
+function applyInventoryFilter() {
+  const q = ($("inventorySearch")?.value || "").toLowerCase();
+
+  filteredInventory = allInventoryItems.filter(i =>
+    i.name.toLowerCase().includes(q) ||
+    i.barcode.includes(q)
+  );
+
+  renderVirtualRows(0);
+}
+
+/* =====================================================
+   INLINE EDIT
+===================================================== */
+function startEdit(barcode) {
+  editingBarcode = barcode;
+  renderVirtualRows($("inventoryScroll").scrollTop);
+}
+
+function saveEdit(barcode) {
+  const expiryInput = document.querySelector(`input[data-expiry="${barcode}"]`);
+  const qtyInput = document.querySelector(`input[data-qty="${barcode}"]`);
+
+  if (!expiryInput || !qtyInput) return;
+
+  const newExpiry = expiryInput.value;
+  const newQty = Number(qtyInput.value);
+
+  if (!newExpiry || newQty <= 0) {
+    alert("Invalid values");
+    return;
+  }
+
+  getItem(barcode, item => {
+    if (!item) return;
+
+    item.expiry = newExpiry;
+    item.quantity = newQty;
+
+    addItem(item, () => {
+      editingBarcode = null;
+      loadInventory();
+      updateDashboardFromDB();
+    });
+  });
+}
+
+/* =====================================================
+   VIRTUAL SCROLL RENDER
+===================================================== */
+function renderVirtualRows(scrollTop) {
+  const tbody = $("inventoryBody");
+  const scrollBox = $("inventoryScroll");
+  if (!tbody || !scrollBox) return;
+
+  const start = Math.floor(scrollTop / rowHeight);
+  const end = Math.min(start + visibleRows, filteredInventory.length);
+
+  tbody.innerHTML = "";
+  tbody.style.transform = `translateY(${start * rowHeight}px)`;
+  tbody.style.height = filteredInventory.length * rowHeight + "px";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = start; i < end; i++) {
+    const item = filteredInventory[i];
+    const tr = document.createElement("tr");
+
+    if (new Date(item.expiry) < today) {
+      tr.className = "expired-row";
+    }
+
+    const isEditing = editingBarcode === item.barcode;
+
+    tr.innerHTML = `
+      <td>${item.name}</td>
+      <td>${item.barcode}</td>
+      <td>${item.description || ""}</td>
+
+      <td>
+        ${
+          isEditing
+            ? `<input type="date" value="${item.expiry}" data-expiry="${item.barcode}">`
+            : item.expiry
+        }
+      </td>
+
+      <td>
+        ${
+          isEditing
+            ? `<input type="number" min="1" value="${item.quantity}" data-qty="${item.barcode}">`
+            : item.quantity
+        }
+      </td>
+
+      <td>
+        ${
+          isEditing
+            ? `<button title="Save" onclick="saveEdit('${item.barcode}')">💾</button>`
+            : `
+              <button title="Edit" onclick="startEdit('${item.barcode}')">✏️</button>
+              <button title="Delete" onclick="deleteItem('${item.barcode}')">🗑️</button>
+            `
+        }
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+}
+
+/* =====================================================
+   DELETE ITEM
+===================================================== */
+function deleteItem(barcode) {
+  if (!confirm("Delete this item?")) return;
+  deleteItemByBarcode(barcode, () => {
+    loadInventory();
+    updateDashboardFromDB();
+  });
+}
+
+/* =====================================================
+   DASHBOARD (FIXED & WORKING)
+===================================================== */
+function updateDashboardFromDB() {
+  getAllItems(items => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const fiveMonthsLater = new Date(today);
+    fiveMonthsLater.setMonth(today.getMonth() + 5);
+
+    let expired = 0;
+    let toReturn = 0;
+
+    items.forEach(i => {
+      if (!i.expiry || i.quantity <= 0) return;
+
+      const exp = new Date(i.expiry);
+
+      if (exp < today) {
+        expired++;
+      } else if (exp >= today && exp <= fiveMonthsLater) {
+        toReturn++;
+      }
+    });
+
+    if ($("expiredCount")) $("expiredCount").textContent = expired;
+    if ($("returnCount")) $("returnCount").textContent = toReturn;
+  });
+}
+
+/* =====================================================
+   ACTIVE TAB
+===================================================== */
+function highlightActiveTab() {
+  const page = location.pathname.split("/").pop();
+  document.querySelectorAll(".bottom-tab a").forEach(t =>
+    t.classList.remove("active")
+  );
+
+  if (page === "index.html") document.querySelector('[data-tab="inventory"]')?.classList.add("active");
+  if (page === "add.html") document.querySelector('[data-tab="add"]')?.classList.add("active");
+  if (page === "dashboard.html") document.querySelector('[data-tab="dashboard"]')?.classList.add("active");
+}
+
+/* =====================================================
+   BOOTSTRAP (DB READY SAFE)
+===================================================== */
+document.addEventListener("DOMContentLoaded", () => {
+  const scrollBox = $("inventoryScroll");
+  if (scrollBox) {
+    scrollBox.addEventListener("scroll", () => {
+      renderVirtualRows(scrollBox.scrollTop);
+    });
+  }
+
+  if (typeof onDBReady === "function") {
+    onDBReady(() => {
+      if ($("inventoryBody")) loadInventory();
+      if ($("expiredCount") || $("returnCount")) updateDashboardFromDB();
+      highlightActiveTab();
+    });
+  }
+});

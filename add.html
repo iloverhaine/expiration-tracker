@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add / Update Item</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+  <h2>Add / Update Item</h2>
+
+  <!-- BARCODE ACTIONS -->
+  <label><strong>Barcode</strong></label>
+  <input id="searchBarcode" placeholder="Search / Scan / Enter barcode">
+
+  <button type="button" onclick="searchByBarcode()">🔎 Search</button>
+  <button type="button" onclick="startScanner()">📷 Scan Barcode</button>
+
+  <div id="scanner" style="width:100%; max-width:360px; margin:12px auto;"></div>
+
+  <hr>
+
+  <!-- ADD / UPDATE FORM -->
+  <form id="itemForm">
+    <input id="name" placeholder="Item Name *" required>
+    <input id="barcode" placeholder="Barcode *" required>
+    <input id="description" placeholder="Description">
+    <input id="expiry" type="date" required>
+    <input id="quantity" type="number" min="1" placeholder="Quantity *" required>
+
+    <button type="submit">Save Item</button>
+  </form>
+</div>
+
+<!-- BOTTOM TAB BAR (NO SCAN TAB) -->
+<nav class="bottom-tab">
+  <a href="index.html" data-tab="inventory">
+    📦<span>Inventory</span><i class="badge" id="badge-inventory"></i>
+  </a>
+
+  <a href="add.html" data-tab="add">
+    ➕<span>Add</span>
+  </a>
+
+  <a href="dashboard.html" data-tab="dashboard">
+    📊<span>Dashboard</span><i class="badge" id="badge-dashboard"></i>
+  </a>
+</nav>
+
+<script src="https://unpkg.com/@ericblade/quagga2/dist/quagga.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+  highlightActiveTab();
+  updateTabBadges();
+</script>
+
+</body>
+</html>

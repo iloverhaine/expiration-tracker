@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+  <h2>Dashboard</h2>
+
+  <!-- SUMMARY -->
+  <p>❌ Expired: <strong id="expiredCount">0</strong></p>
+  <p>📦 To Be Returned (≥ 5 months): <strong id="returnCount">0</strong></p>
+
+  <hr>
+
+  <!-- IMPORT / EXPORT SECTION -->
+  <h3>Import / Export</h3>
+
+  <label><strong>Import Products (Excel)</strong></label>
+  <input type="file" id="importFile" accept=".xlsx">
+  <button onclick="importData()">Import Products</button>
+
+  <br><br>
+
+  <label><strong>Export Inventory</strong></label>
+  <button onclick="exportToExcel()">Export Inventory</button>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<nav class="bottom-tab">
+  <a href="index.html" data-tab="inventory">
+    📦
+    <span>Inventory</span>
+    <i class="badge" id="badge-inventory"></i>
+  </a>
+
+  <a href="add.html" data-tab="add">
+    ➕
+    <span>Add</span>
+  </a>
+
+  <a href="dashboard.html" data-tab="dashboard">
+    📊
+    <span>Dashboard</span>
+    <i class="badge" id="badge-dashboard"></i>
+  </a>
+</nav>
+
+<!-- SCRIPTS -->
+<script src="xlsx.full.min.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+<script>
+  updateDashboardFromDB();
+  highlightActiveTab();
+  updateTabBadges();
+</script>
+
+</body>
+</html>
